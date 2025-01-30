@@ -1,20 +1,16 @@
-# Usa uma imagem base com JDK 17 (ou outra versão necessária)
-FROM openjdk:17-jdk-slim 
+# Use uma imagem base com Java e Gradle
+FROM gradle:8.3.0-jdk17 AS build
+COPY --chown=gradle:gradle . /home/gradle/src
+WORKDIR /home/gradle/src
 
-# Define o diretório de trabalho dentro do container
-WORKDIR /app 
+# Limpa o cache do Gradle
+RUN gradle clean
 
-# Copia o código-fonte do projeto para dentro do container
-COPY . .
+# Executa o build
+RUN gradle build --no-daemon
 
-# Constrói a aplicação usando Gradle
-RUN ./gradlew build 
-
-# Copia o arquivo JAR gerado para a pasta final
-RUN cp build/libs/*.jar app.jar 
-
-# Expõe a porta usada pela aplicação
-EXPOSE 8080 
-
-# Comando para rodar a aplicação
-CMD ["java", "-jar", "app.jar"]
+# Imagem final
+FROM openjdk:17-jdk-slim
+EXPOSE 8080
+COPY --from=build /home/gradle/src/build/libs/webapp-0.0.1-SNAPSHOT.jar /app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
